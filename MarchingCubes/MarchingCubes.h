@@ -70,7 +70,7 @@ public:
 	MCMeshReconstructor();
 
 	//文件名前缀,CT切片数量
-	void LoadCTSlicerFromFiles(std::string fileNamePrefix, int sliceCount,int pixelWidth,int pixelHeight);
+	bool LoadCTSlicerFromFiles(std::string fileNamePrefix,std::string fileNameSubfix, int sliceCount,int pixelWidth,int pixelHeight);
 
 	//注意此算法用的是XZY笛卡尔坐标系，Y轴垂直于水平面
 	void Reconstruct(const MarchingCubeParam& mcInfo);

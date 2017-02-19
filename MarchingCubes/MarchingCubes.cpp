@@ -15,14 +15,20 @@ MCMeshReconstructor::MCMeshReconstructor()
 }
 
 
-void MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, int sliceCount, int pixelWidth, int pixelHeight)
+bool MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, std::string fileNameSubfix, int sliceCount, int pixelWidth, int pixelHeight)
 {
+	if (sliceCount < 2)
+	{
+		std::cout << "错误：CT切片数量必须不少于2！函数执行中断" << std::endl;
+		return false;
+	}
+
 	CTSlice slice(pixelWidth, pixelHeight);
 	mCTSlices.resize(sliceCount, slice);
 
 	for (int i = 0; i < sliceCount; i++)
 	{
-		std::string finalPath = fileNamePrefix + std::to_string(sliceCount);
+		std::string finalPath = fileNamePrefix + std::to_string(i) + fileNameSubfix;
 
 		//打开文件
 		std::fstream inFile(finalPath,std::ios::in);
@@ -39,6 +45,7 @@ void MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, int 
 
 		std::cout << "File Loaded! : " << finalPath << std::endl;
 	}
+	return true;
 }
 
 void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
@@ -51,7 +58,7 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 	float BigCubeDepth = mcInfo.cubeCountZ * mcInfo.cubeDepth;
 
 	//y：如果有n个切片，那么y方向只需要遍历n-1个正方体
-	for (uint32_t cubeIndexY = 0; cubeIndexY < mCTSlices.size()-1; ++cubeIndexY)
+	for (int cubeIndexY = 0; cubeIndexY < mCTSlices.size()-1; ++cubeIndexY)
 	{
 		for (int cubeIndexX = 0; cubeIndexX < mcInfo.cubeCountX; ++cubeIndexX)
 		{
@@ -80,6 +87,7 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 					basePosition + VECTOR3(0,mcInfo.cubeHeight,mcInfo.cubeDepth),
 				};
 
+
 				//现在呢，我们根据8个顶点来计算要用256种情况的哪一种
 				int triangleCaseIndex = 0;
 				for(int i=0;i<8;++i)
@@ -100,10 +108,10 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 					CTSlice &  currentSlice = mCTSlices.at(currentCubeIndexY);
 
 					//先求对应点的像素坐标，才能在CT图里面获得数据的嘛，你说是不是
-					int pixelCoordX = (v[i].x / BigCubeWidth) * currentSlice.pixelWidth;
+					int pixelCoordX = int((v[i].x / BigCubeWidth) * currentSlice.pixelWidth);
 					if (pixelCoordX == currentSlice.pixelWidth)pixelCoordX--;
 
-					int pixelCoordY = (v[i].z / BigCubeDepth) * currentSlice.pixelHeight;
+					int pixelCoordY = int((v[i].z / BigCubeDepth) * currentSlice.pixelHeight);
 					if (pixelCoordY == currentSlice.pixelHeight)pixelCoordY--;
 
 					//用CT图对应位置是否是白色（也就是1）来判断此点是不是在物体内部
@@ -115,7 +123,7 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 				}
 
 				//这两个case是不会生成任何三角形，干脆跳过
-				if (triangleCaseIndex == 0 || triangleCaseIndex == 255)break;
+				if (triangleCaseIndex == 0 || triangleCaseIndex == 255)continue;
 
 				//取non-trivial 的 Triangle Case
 				const TriangleCase& triCase = c_MarchingCubeTriangleCase[triangleCaseIndex];
@@ -165,7 +173,6 @@ void MCMeshReconstructor::GetMesh(std::vector<VECTOR3>& output)
 {
 	output = std::move(mMeshOutput);
 };
-
 
 
 //必须要看1987 Lorensen那篇经典论文的定义，这里的数字是0-11，论文里是1-12，
