@@ -15,30 +15,49 @@ MCMeshReconstructor::MCMeshReconstructor()
 }
 
 
-bool MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, std::string fileNameSubfix, int sliceCount, int pixelWidth, int pixelHeight)
+bool MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, std::string fileNameSubfix, int sliceStartIndex, int sliceEndIndex, int pixelWidth, int pixelHeight)
 {
-	if (sliceCount < 2)
+	if (sliceEndIndex - sliceStartIndex< 1)
 	{
 		std::cout << "错误：CT切片数量必须不少于2！函数执行中断" << std::endl;
 		return false;
 	}
 
 	CTSlice slice(pixelWidth, pixelHeight);
-	mCTSlices.resize(sliceCount, slice);
+	mCTSlices.resize(sliceEndIndex- sliceStartIndex+1, slice);
 
-	for (int i = 0; i < sliceCount; i++)
+	for (int i = sliceEndIndex; i >= sliceStartIndex; i--)
 	{
-		std::string finalPath = fileNamePrefix + std::to_string(i) + fileNameSubfix;
+		std::string finalPath = fileNamePrefix;
+
+		//如果文件标号是有n位数字的，那么在前面就要补够0
+		if (i < 10)finalPath += "00";
+		else if (i < 100)finalPath += "0";
+
+		//计算最终文件路径
+		finalPath += std::to_string(i) + fileNameSubfix;
 
 		//打开文件
-		std::fstream inFile(finalPath,std::ios::in);
-		//读入0与1
-		while (!inFile.eof())
+		std::ifstream inFile(finalPath,std::ios::binary);
+		if (!inFile.is_open()) 
 		{
-			int c;
-			inFile>> c;
-			mCTSlices.at(i).bitArray.push_back(c);
+			std::cout << "File Load Error!! :  " <<  finalPath  << std::endl;
 		}
+
+		//读入0与1
+		char* fileBuff = new char[pixelWidth*pixelHeight];
+		inFile.read(fileBuff, pixelWidth*pixelHeight);
+		
+		//写入到CT切片
+		mCTSlices.at(sliceEndIndex - i).bitArray.assign(fileBuff, fileBuff + pixelWidth*pixelHeight);
+
+		/*for (int k = 0; k < pixelWidth*pixelHeight; k++)
+		{
+			if (fileBuff[k]!=0)
+			{
+				std::cout << fileBuff[k];
+			}
+		}*/
 
 		//....
 		inFile.close();
@@ -114,8 +133,8 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 					int pixelCoordY = int((v[i].z / BigCubeDepth) * currentSlice.pixelHeight);
 					if (pixelCoordY == currentSlice.pixelHeight)pixelCoordY--;
 
-					//用CT图对应位置是否是白色（也就是1）来判断此点是不是在物体内部
-					if (currentSlice.GetPixel(pixelCoordX, pixelCoordY) == 1)
+					//用CT图对应位置是否是白色（也就是-1）来判断此点是不是在物体内部
+					if (currentSlice.GetPixel(pixelCoordX, pixelCoordY) == 255)
 					{
 						//设置第i个二进制位
 						triangleCaseIndex |= (1 << i);

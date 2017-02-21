@@ -9,8 +9,10 @@ int main()
 {
 	MCMeshReconstructor mc;
 
-	mc.LoadCTSlicerFromFiles("", ".txt", 7, 512, 512);
+	//加载CT切片
+	mc.LoadCTSlicerFromFiles("CT\\", ".dat",15,179, 512, 512);
 
+	//用mc算法重建出模型
 	MarchingCubeParam mcParam;
 	mcParam.cubeCountX = 512;
 	mcParam.cubeCountZ = 512;
@@ -22,6 +24,7 @@ int main()
 	std::vector<VECTOR3> outVertexList;
 	mc.GetMesh(outVertexList);
 
+	//保存模型到stl文件
 	ExportFile_STL_Binary("666.stl", "c624362363250", outVertexList);
 
 	return true;
