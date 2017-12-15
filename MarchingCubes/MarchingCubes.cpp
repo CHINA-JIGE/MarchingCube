@@ -19,7 +19,7 @@ bool MCMeshReconstructor::LoadCTSlicerFromFiles(std::string fileNamePrefix, std:
 {
 	if (sliceEndIndex - sliceStartIndex< 1)
 	{
-		std::cout << "错误：CT切片数量必须不少于2！函数执行中断" << std::endl;
+		std::cout << "Error : number of CT slices should be more than 2！Load CT Slices failed." << std::endl;
 		return false;
 	}
 
@@ -73,11 +73,14 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 	//------------------开始用Marching Cube算法来生成迷之等值面们------------------
 
 	//这两个变量就是由一堆小方块堆成的大方块的尺寸
+	int cubeCountY = mCTSlices.size() - 1; //mCTSlices.size() - 2;
 	float BigCubeWidth = mcInfo.cubeCountX * mcInfo.cubeWidth;
+	float BigCubeHeight =		cubeCountY		 *  mcInfo.cubeHeight;
 	float BigCubeDepth = mcInfo.cubeCountZ * mcInfo.cubeDepth;
 
-	//y：如果有n个切片，那么y方向只需要遍历n-1个正方体
-	for (int cubeIndexY = 0; cubeIndexY < mCTSlices.size()-1; ++cubeIndexY)
+	//y：如果有n个切片，那么因为做了个“优化”就是相邻层图像求并集，所以只有n-1层图像
+	//那么y方向只需要遍历n-2个正方体
+	for (int cubeIndexY = 0; cubeIndexY < cubeCountY; ++cubeIndexY)
 	{
 		for (int cubeIndexX = 0; cubeIndexX < mcInfo.cubeCountX; ++cubeIndexX)
 		{
@@ -125,6 +128,7 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 
 					//取CT切片
 					CTSlice &  currentSlice = mCTSlices.at(currentCubeIndexY);
+					//CTSlice &  nextSlice = mCTSlices.at(currentCubeIndexY+1);
 
 					//先求对应点的像素坐标，才能在CT图里面获得数据的嘛，你说是不是
 					int pixelCoordX = int((v[i].x / BigCubeWidth) * currentSlice.pixelWidth);
@@ -134,6 +138,8 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 					if (pixelCoordY == currentSlice.pixelHeight)pixelCoordY--;
 
 					//用CT图对应位置是否是白色（也就是-1）来判断此点是不是在物体内部
+					//if (currentSlice.GetPixel(pixelCoordX, pixelCoordY) == 255 ||
+					//	nextSlice.GetPixel(pixelCoordX, pixelCoordY) == 255)
 					if (currentSlice.GetPixel(pixelCoordX, pixelCoordY) == 255)
 					{
 						//设置第i个二进制位
@@ -176,9 +182,10 @@ void MCMeshReconstructor::Reconstruct(const MarchingCubeParam & mcInfo)
 				for (int i = 0; i < 16;i+=3)
 				{
 					if (triCase.index[i] == -1)break;
-					mMeshOutput.push_back(pointOnEdge[triCase.index[i]]);
-					mMeshOutput.push_back(pointOnEdge[triCase.index[i+1]]);
-					mMeshOutput.push_back(pointOnEdge[triCase.index[i+2]]);
+					//减的那个东西是为了让模型靠近原点
+					mMeshOutput.push_back(pointOnEdge[triCase.index[i]] - VECTOR3(BigCubeWidth*0.5f,BigCubeHeight*0.5f,BigCubeDepth*0.5f));
+					mMeshOutput.push_back(pointOnEdge[triCase.index[i+1]] - VECTOR3(BigCubeWidth*0.5f, BigCubeHeight*0.5f, BigCubeDepth*0.5f));
+					mMeshOutput.push_back(pointOnEdge[triCase.index[i+2]] - VECTOR3(BigCubeWidth*0.5f, BigCubeHeight*0.5f, BigCubeDepth*0.5f));
 				}
 
 			}

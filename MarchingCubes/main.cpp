@@ -7,18 +7,24 @@ bool ExportFile_STL_Binary(std::string filePath, const std::string & headerInfo,
 
 int main()
 {
+	std::cout << "please enter : cubeCountX,cubeCountZ, width, height,depth,startID,endID" << std::endl;
+	std::cout << "default parameters: 150 150 0.23 0.1 0.23 15 179"<<std::endl;
+	int cx, cz, startID, endID;
+	float w, h, d;
+	std::cin >> cx >> cz >> w >> h >> d>>startID>>endID;
+
 	MCMeshReconstructor mc;
 
 	//加载CT切片
-	mc.LoadCTSlicerFromFiles("CT\\", ".dat",15,179, 512, 512);
+	mc.LoadCTSlicerFromFiles("CT\\", ".dat",startID,endID, 512, 512);
 
 	//用mc算法重建出模型
 	MarchingCubeParam mcParam;
-	mcParam.cubeCountX = 512;
-	mcParam.cubeCountZ = 512;
-	mcParam.cubeWidth = 1.0f;
-	mcParam.cubeHeight = 1.0f;
-	mcParam.cubeDepth = 1.0f;
+	mcParam.cubeCountX = cx;//150
+	mcParam.cubeCountZ = cz;//150
+	mcParam.cubeWidth = w;//0.5f
+	mcParam.cubeHeight = h;
+	mcParam.cubeDepth = d;
 	mc.Reconstruct(mcParam);
 
 	std::vector<VECTOR3> outVertexList;
@@ -88,13 +94,15 @@ bool ExportFile_STL_Binary(std::string filePath, const std::string & headerInfo,
 		VECTOR3 triNorm = VECTOR3
 		(	edge1.y * edge2.z - edge1.z * edge2.y, 
 			edge1.z * edge2.x - edge1.x * edge2.z, 
-			edge1.x * edge2.y - edge1.y * edge2.x	);
+			edge1.x * edge2.y - edge1.y * edge2.x	)*(-1.0f);
+
+		triNorm.Normalize();
 
 
 		//a facet normal
 		REINTERPRET_WRITE(triNorm.x);
-		REINTERPRET_WRITE(triNorm.y);
 		REINTERPRET_WRITE(triNorm.z);
+		REINTERPRET_WRITE(triNorm.y);
 
 		//3 vertices
 		REINTERPRET_WRITE(v1.x);
